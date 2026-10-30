@@ -1,0 +1,24 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# SQLite databases (seed_db.py recreates them)
+*.db
+*.db-journal
+*.sqlite3
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+
+# Database backups
+backups/
