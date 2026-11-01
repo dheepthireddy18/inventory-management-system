@@ -127,3 +127,36 @@ def delete_product(conn, product_id):
             "This product has sales history and cannot be deleted."
         ) from error
     return cursor.rowcount == 1
+
+
+# Find products whose name, SKU, or supplier name contains text, ignoring case.
+# Optional filters combine with AND. Results are sorted by name.
+def search_products(
+    conn,
+    text="",
+    category=None,
+    max_price_cents=None,
+    in_stock_only=False,
+    low_stock_only=False,
+):
+    pattern = f"%{text}%"
+    conditions = ["(p.name LIKE ? OR p.sku LIKE ? OR s.name LIKE ?)"]
+    params = [pattern, pattern, pattern]
+    if category is not None:
+        conditions.append("p.category = ?")
+        params.append(category)
+    if max_price_cents is not None:
+        conditions.append("p.unit_price_cents <= ?")
+        params.append(max_price_cents)
+    if in_stock_only:
+        conditions.append("p.quantity_in_stock > 0")
+    if low_stock_only:
+        conditions.append("p.quantity_in_stock <= p.reorder_level")
+    sql = (
+        "SELECT p.id, p.sku, p.name, p.category, p.unit_price_cents,"
+        " p.quantity_in_stock, p.reorder_level, s.name AS supplier_name"
+        " FROM products AS p"
+        " JOIN suppliers AS s ON s.id = p.supplier_id"
+        " WHERE " + " AND ".join(conditions) + " ORDER BY p.name"
+    )
+    return conn.execute(sql, params).fetchall()
