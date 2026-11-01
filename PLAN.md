@@ -61,9 +61,9 @@ A log of every change to stock, so the store can say exactly what changed, when,
 
 ## Relationships
 - suppliers: one - many :products (products.supplier_id)
-- sales: 1 - many :sale_items (sale_items.sale_id)
-- products 1 - many sale_items (sale_items.product_id)
-- products 1 - many stock_movements (stock_movements.product_id)
+- sales: one - many :sale_items (sale_items.sale_id)
+- products one - many sale_items (sale_items.product_id)
+- products one - many stock_movements (stock_movements.product_id)
 
 Foreign keys are enforced on every connection with PRAGMA foreign_keys = ON
 inside connect(), because SQLite leaves them off by default.
@@ -74,6 +74,7 @@ Rule violations raise InventoryError (a custom exception) with a readable messag
 
 | Function | Inputs | Returns |
 |---|---|---|
+| get_db_path | (none) | INVENTORY_DB if set, else the path of inventory.db next to the code |
 | connect | db_path (default: INVENTORY_DB env var, else inventory.db next to the code) | sqlite3.Connection with foreign keys on and sqlite3.Row rows |
 | create_schema | conn | None |
 | add_product | conn, sku, name, category, supplier_id, unit_price_cents, quantity_in_stock, reorder_level | new product id (int) |
@@ -95,7 +96,6 @@ Rule violations raise InventoryError (a custom exception) with a readable messag
 Each multi-step change runs inside one `with conn:` block. If any statement or check raises, the block rolls back every step and the error is re-raised.
 Helpers used inside the block (such as logging a movement) never commit.
 
-### restock(product_id, amount)
 ### restock(connection, product_id, amount, now=None)
 1. Refuse an amount of zero or less (amount <= 0). Nothing has been written yet.
 2. Open the transaction.
@@ -104,7 +104,7 @@ Helpers used inside the block (such as logging a movement) never commit.
 4. Log a restock movement for the amount.
 5. If step 4 fails, the stock increase from step 3 is undone.
 
-### adjust_stock(product_id, change)
+### adjust_stock(conn, product_id, change, when=None)
 1. Refuse a change of zero (change = 0). Nothing has been written yet.
 2. Open the transaction.
 3. Look up the product's current stock. If the product does not exist, refuse it.
@@ -115,7 +115,7 @@ Helpers used inside the block (such as logging a movement) never commit.
 6. Log an adjustment movement for the change.
 7. If step 6 fails, the stock change from step 5 is undone.
 
-### record_sale(items)
+### record_sale(conn, items, when=None)
 1. Refuse an empty list, a quantity of zero or less (quantity <= 0), or the same
    product listed twice. Nothing has been written yet.
 2. Open the transaction.
