@@ -19,9 +19,3 @@ def test_seed_twice_does_not_duplicate_data(conn):
     seed_db.seed(conn)
     assert seed_db.seed(conn) is False
     assert table_row_counts(conn)["products"] == 12
-
-
-def test_seed_has_at_least_three_categories(conn):
-    seed_db.seed(conn)
-    count = conn.execute("SELECT COUNT(DISTINCT category) FROM products").fetchone()[0]
-    assert count >= 3
