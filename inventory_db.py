@@ -160,3 +160,56 @@ def search_products(
         " WHERE " + " AND ".join(conditions) + " ORDER BY p.name"
     )
     return conn.execute(sql, params).fetchall()
+
+
+# Total value of each supplier's stock (price times quantity), highest first.
+def stock_value_by_supplier(conn):
+    return conn.execute(
+        "SELECT s.name AS supplier_name,"
+        " COALESCE(SUM(p.unit_price_cents * p.quantity_in_stock), 0)"
+        " AS stock_value_cents"
+        " FROM suppliers AS s"
+        " LEFT JOIN products AS p ON p.supplier_id = s.id"
+        " GROUP BY s.id"
+        " ORDER BY stock_value_cents DESC"
+    ).fetchall()
+
+
+# Products at or below their reorder level, with how many units short they are.
+def low_stock(conn):
+    return conn.execute(
+        "SELECT sku, name, quantity_in_stock, reorder_level,"
+        " reorder_level - quantity_in_stock AS units_short"
+        " FROM products"
+        " WHERE quantity_in_stock <= reorder_level"
+        " ORDER BY units_short DESC, name"
+    ).fetchall()
+
+
+# Units sold and revenue for each product that has been sold, highest revenue first.
+def sales_by_product(conn):
+    return conn.execute(
+        "SELECT p.sku, p.name, SUM(i.quantity) AS units_sold,"
+        " SUM(i.quantity * i.unit_price_cents) AS revenue_cents"
+        " FROM products AS p"
+        " JOIN sale_items AS i ON i.product_id = p.id"
+        " GROUP BY p.id"
+        " ORDER BY revenue_cents DESC, p.name"
+    ).fetchall()
+
+
+# Products that appear in no sale.
+def never_sold(conn):
+    return conn.execute(
+        "SELECT p.sku, p.name"
+        " FROM products AS p"
+        " LEFT JOIN sale_items AS i ON i.product_id = p.id"
+        " WHERE i.id IS NULL"
+        " ORDER BY p.name"
+    ).fetchall()
+
+
+# Show whole cents as dollars with two decimals, e.g. 1299 -> "12.99".
+def format_cents(cents):
+    dollars, remainder = divmod(cents, 100)
+    return f"{dollars}.{remainder:02d}"
