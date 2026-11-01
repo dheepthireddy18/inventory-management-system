@@ -25,3 +25,18 @@ def connect(db_path=None):
 # create any missing tables and indexes, existing tables and data are kept.
 def create_schema(conn):
     conn.executescript(SCHEMA_PATH.read_text())
+
+
+# One fixed query; table names are written here, never taken from input.
+ROW_COUNTS_SQL = """
+    SELECT 'suppliers' AS table_name, COUNT(*) AS row_count FROM suppliers
+    UNION ALL SELECT 'products', COUNT(*) FROM products
+    UNION ALL SELECT 'sales', COUNT(*) FROM sales
+    UNION ALL SELECT 'sale_items', COUNT(*) FROM sale_items
+    UNION ALL SELECT 'stock_movements', COUNT(*) FROM stock_movements
+"""
+
+
+# Return a dict of table name to row count, in schema order.
+def table_row_counts(conn):
+    return {row["table_name"]: row["row_count"] for row in conn.execute(ROW_COUNTS_SQL)}
