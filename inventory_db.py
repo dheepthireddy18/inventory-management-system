@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from datetime import datetime
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -213,3 +214,80 @@ def never_sold(conn):
 def format_cents(cents):
     dollars, remainder = divmod(cents, 100)
     return f"{dollars}.{remainder:02d}"
+
+
+# Format the time of a change; tests pass a fixed time, otherwise use now.
+def _timestamp(when):
+    if when is None:
+        when = datetime.now()
+    return when.isoformat(timespec="seconds")
+
+
+# Apply a signed stock change and log it, inside the caller's transaction.
+# Never commits. Returns the new quantity.
+def _change_stock(conn, product_id, change, reason, moved_at):
+    try:
+        row = conn.execute(
+            "UPDATE products SET quantity_in_stock = quantity_in_stock + ?"
+            " WHERE id = ? RETURNING quantity_in_stock",
+            (change, product_id),
+        ).fetchone()
+    except sqlite3.IntegrityError as error:
+        # The CHECK (quantity_in_stock >= 0) constraint refused the update.
+        raise InventoryError(f"Not enough stock for product {product_id}.") from error
+    if row is None:
+        raise InventoryError(f"Product {product_id} does not exist.")
+    conn.execute(
+        "INSERT INTO stock_movements (product_id, change, reason, moved_at)"
+        " VALUES (?, ?, ?, ?)",
+        (product_id, change, reason, moved_at),
+    )
+    return row["quantity_in_stock"]
+
+
+# Add a positive amount to stock and log a restock movement. Returns the new quantity.
+def restock(conn, product_id, amount, when=None):
+    if amount <= 0:
+        raise InventoryError("Restock amount must be more than zero.")
+    with conn:
+        return _change_stock(conn, product_id, amount, "restock", _timestamp(when))
+
+
+# Change stock by a signed amount (damage or recount) and log an adjustment.
+# Returns the new quantity; refused if stock would go below zero.
+def adjust_stock(conn, product_id, change, when=None):
+    if change == 0:
+        raise InventoryError("Adjustment must not be zero.")
+    with conn:
+        return _change_stock(conn, product_id, change, "adjustment", _timestamp(when))
+
+
+# Record a sale of (product_id, quantity) pairs at current prices and return its id.
+# Everything happens in one transaction: if any line fails, the whole sale is undone.
+def record_sale(conn, items, when=None):
+    product_ids = [product_id for product_id, _ in items]
+    if not items:
+        raise InventoryError("A sale needs at least one item.")
+    if len(set(product_ids)) != len(product_ids):
+        raise InventoryError("Each product can appear only once in a sale.")
+    if any(quantity <= 0 for _, quantity in items):
+        raise InventoryError("Each quantity must be more than zero.")
+
+    sold_at = _timestamp(when)
+    with conn:
+        sale_id = conn.execute(
+            "INSERT INTO sales (sold_at) VALUES (?)", (sold_at,)
+        ).lastrowid
+        for product_id, quantity in items:
+            product = conn.execute(
+                "SELECT unit_price_cents FROM products WHERE id = ?", (product_id,)
+            ).fetchone()
+            if product is None:
+                raise InventoryError(f"Product {product_id} does not exist.")
+            conn.execute(
+                "INSERT INTO sale_items (sale_id, product_id, quantity, unit_price_cents)"
+                " VALUES (?, ?, ?, ?)",
+                (sale_id, product_id, quantity, product["unit_price_cents"]),
+            )
+            _change_stock(conn, product_id, -quantity, "sale", sold_at)
+    return sale_id
