@@ -189,6 +189,12 @@ MENU = {
 }
 
 
+# Version 1.1.0: warn at start-up how many products need reordering.
+def show_low_stock_banner(conn):
+    count = len(inventory_db.low_stock(conn))
+    print(f"*** Low stock: {count} products at or below their reorder level ***")
+
+
 def run_menu(conn):
     while True:
         print()
@@ -214,6 +220,7 @@ def run_menu(conn):
 def main():
     with closing(inventory_db.connect()) as conn:
         inventory_db.create_schema(conn)
+        show_low_stock_banner(conn)
         run_menu(conn)
 
 

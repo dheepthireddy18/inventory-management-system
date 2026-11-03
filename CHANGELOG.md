@@ -2,6 +2,11 @@
 
 All notable changes to this project are listed here.
 
+## [1.1.0] - 2026-11-02
+
+### Added
+- The menu shows a banner with the number of low stock products when it starts.
+
 ## [1.0.0] - 2026-11-02
 
 ### Added
