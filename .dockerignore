@@ -1,0 +1,18 @@
+# Git and editor files
+.git
+.github
+.vscode
+.idea
+.DS_Store
+
+# Python caches and the local virtual environment
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+
+# Local data: the container keeps its own database on a volume
+*.db
+*.db-journal
+backups

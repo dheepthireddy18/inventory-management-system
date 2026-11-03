@@ -28,3 +28,16 @@ jobs:
 
       - name: Run tests
         run: pytest -v
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Build the image
+        run: docker build -t inventory:ci .
+
+      - name: Run the tests inside the image
+        run: docker run --rm inventory:ci pytest -q

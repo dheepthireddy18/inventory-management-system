@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from contextlib import closing
 from datetime import datetime
 from pathlib import Path
 
@@ -291,3 +292,15 @@ def record_sale(conn, items, when=None):
             )
             _change_stock(conn, product_id, -quantity, "sale", sold_at)
     return sale_id
+
+
+# Copy the whole database to backup_path with SQLite's backup API.
+# while the database is in use, the copy is a complete, consistent snapshot.
+def backup_database(conn, backup_path):
+    with closing(connect(backup_path)) as backup:
+        conn.backup(backup)
+
+
+# Run SQLite's own consistency check; returns "ok" for a healthy database.
+def integrity_check(conn):
+    return conn.execute("PRAGMA integrity_check").fetchone()[0]
