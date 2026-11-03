@@ -184,6 +184,8 @@ MENU = {
     "8": ("Report: sales by product", show_sales_by_product),
     "9": ("Report: never sold", show_never_sold),
     "10": ("Back up the database", back_up),
+    "11": ("Change a product's price", change_price),
+    "12": ("Delete a product", delete_product),
 }
 
 
