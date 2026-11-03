@@ -108,6 +108,22 @@ def restock(conn):
     print(f"Restocked. Product {product_id} now has {new_quantity} in stock.")
 
 
+def change_price(conn):
+    product_id = ask_int("Product ID: ")
+    if inventory_db.update_price(conn, product_id, ask_price_cents("New price: ")):
+        print("Price updated.")
+    else:
+        print("No product has that ID.")
+
+
+def delete_product(conn):
+    product_id = ask_int("Product ID: ")
+    if inventory_db.delete_product(conn, product_id):
+        print("Product deleted.")
+    else:
+        print("No product has that ID.")
+
+
 def record_sale(conn):
     items = []
     print("Enter each product in the sale. Leave the product ID blank to finish.")
