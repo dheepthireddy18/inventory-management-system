@@ -306,7 +306,50 @@ docker run --rm -v inventory-data:/data inventory:1.0.0 \
 
 ## Roll back
 
-_Added with version 1.1.0._
+Both versions use the same schema, so an older image can read the data written
+by a newer one. To roll back, stop the 1.1.0 container and start the 1.0.0
+image with the same volume. Back up first (menu option 10) in case anything
+goes wrong.
+
+```
+$ docker run --rm -v inventory-data:/data inventory:1.0.0 python seed_db.py
+The database already has data; nothing was added.
+suppliers: 4
+products: 12
+sales: 5
+sale_items: 12
+stock_movements: 3
+
+$ docker run --rm -it -v inventory-data:/data inventory:1.1.0
+*** Low stock: 1 products at or below their reorder level ***
+Choose an option: 4
+Product ID: 6
+Units to add: 5
+Restocked. Product 6 now has 15 in stock.
+Choose an option: q
+Goodbye.
+
+$ docker run --rm -it -v inventory-data:/data inventory:1.0.0
+Choose an option: 2
+Product ID: 6
+ ID  SKU      Name               Category       Price Stock  Supplier
+  6  BLT-001  Hex Bolts          Fasteners       7.99    15  BoltCo Fasteners
+Choose an option: q
+Goodbye.
+
+$ docker run --rm -v inventory-data:/data inventory:1.0.0 python seed_db.py
+The database already has data; nothing was added.
+suppliers: 4
+products: 12
+sales: 5
+sale_items: 12
+stock_movements: 4
+```
+
+After rolling back, 1.0.0 starts without the banner, and the restock made
+under 1.1.0 is still there (Hex Bolts at 15, one more stock movement).
+No data was lost.
+
 
 ## Self-review
 
